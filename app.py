@@ -1,23 +1,64 @@
-# First we imported the Flask class. An instance of this
-# - class will be our WSGI application.
-from flask import Flask
+import os
+import random
 
-# Next we create an instance of this class. The first argument
-# - is the name of the application’s module or package. __name__ is
-# - a convenient shortcut for this that is appropriate for most cases.
-# - This is needed so that Flask knows where to look for resources
-# - such as templates and static files.
+from flask import Flask
+from slack import WebClient
+from slackeventsapi import SlackEventAdapter
+
 app = Flask(__name__)
 
+# http://localhost:{port}/slack/events
+slack_events_adapter = SlackEventAdapter(os.environ.get("SLACK_EVENTS_TOKEN"), "/slack/events", app)
+# This is how we will communicate with slack
+slack_web_client = WebClient(token=os.environ.get("SLACKBOT_TOKEN"))
 
-# We then use the route() decorator to tell Flask what
-# - URL should trigger our function.
-@app.route('/')
-def hello_world():
-    return 'Hello World!'
+# Specific Slack structure to send message.
+# - A "" (blank) text section written in markdown
+MESSAGE_BLOCK = {
+    "type": "section",
+    "text": {
+        "type": "mrkdwn",
+        "text": "",
+    }
+}
 
 
-# he function returns the message we want to display in the user’s browser.
+# Create message function with decorator
+@slack_events_adapter.on("message")
+def message(payload):
+    # Get all event data from payload
+    event = payload.get("event", {})
+    # Get all text sent
+    text = event.get("text")
+
+    if "flip a coin" in text.lower():
+        #  Get channel_id, so we know where to send our message
+        channel_id = event.get("channel")
+        # Generate a random int
+        rand_int = random.randint(0, 1)
+        # 0 is heads
+        if rand_int == 0:
+            results = "Heads"
+        # Anything NOT 0 is tails
+        else:
+            results = "Tails"
+
+        # Send user a friendly message
+        message = f"The result is {results}!"
+
+        # Fill blank text in section from line 17
+        MESSAGE_BLOCK["text"]["text"] = message
+        # Define message to send - Slack sends messages in 'blocks'
+        # - Wrap MESSAGE_BLOCK in a list for error-free multiple block architecture
+        message_to_send = {
+            "channel": channel_id,
+            "blocks": [MESSAGE_BLOCK]
+        }
+
+        return slack_web_client.chat_postMessage(**message_to_send)
+
+
+# The function returns the message we want to display in the user’s browser.
 # - The default content type is HTML, so HTML in the string will be rendered
 # - by the browser.
 if __name__ == '__main__':
