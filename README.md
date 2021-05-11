@@ -4,8 +4,8 @@ A slackbot with simple 'flip a coin' functionality
 
 ## Usage
 
-Add bot to channel. Type 'flip a coin' in channel Bot will respond with random choice of heads/tails using random
-integer logic.
+- Add bot to channel.
+- Type 'flip a coin' in channel Bot will respond with random choice of heads/tails using random integer logic.
 
 ## License
 
